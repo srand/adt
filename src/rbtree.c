@@ -40,16 +40,18 @@
 #define rbtree_right(x)       ((x)->right)
 #define rbtree_parent(x)      ((x)->parent)
 #define rbtree_root(x)        ((x)->root)
-#define rbtree_black(x)       ((x)->color == RBTREE_BLACK)
-#define rbtree_red(x)         ((x)->color == RBTREE_RED)
+#define rbtree_black(x)       ((x)->color == black)
+#define rbtree_red(x)         ((x)->color == red)
 #define rbtree_color(x)       ((x)->color)
 #define rbtree_nil(x)         (&(x)->nil)
 #define rbtree_left_child(x)  ((x) == rbtree_left(rbtree_parent(x)))
 #define rbtree_right_child(x) ((x) == rbtree_right(rbtree_parent(x)))
 #define rbtree_compare(tree)  ((tree)->compare)
 
-#define false 0
-#define true  1
+#define false  0
+#define true   1
+#define black  0ul
+#define red    1ul
 
 /**************************************************************************/
 
@@ -59,7 +61,7 @@ rbtree_node_init(rbtree_t *tree, rbtree_node_t *node)
    rbtree_left(node)   = rbtree_nil(tree);
    rbtree_right(node)  = rbtree_nil(tree);
    rbtree_parent(node) = rbtree_nil(tree);
-   rbtree_color(node)  = RBTREE_BLACK;
+   rbtree_color(node)  = black;
 }
 
 /**************************************************************************/
@@ -73,9 +75,7 @@ rbtree_rotate_left(rbtree_t *tree, rbtree_node_t *node)
    rbtree_right(node) = rbtree_left(right);
    
    if (rbtree_right(node) != rbtree_nil(tree))
-   {
       rbtree_parent(rbtree_left(right)) = node;
-   }
    
    rbtree_left(right)   = node;
    rbtree_parent(right) = parent;
@@ -83,13 +83,9 @@ rbtree_rotate_left(rbtree_t *tree, rbtree_node_t *node)
    if (parent != rbtree_nil(tree))
    {
       if (node == rbtree_left(parent))
-      {
          rbtree_left(parent) = right;
-      }
       else
-      {
          rbtree_right(parent) = right;
-      }
    }
    else
    {
@@ -110,9 +106,7 @@ rbtree_rotate_right(rbtree_t *tree, rbtree_node_t *node)
    rbtree_left(node) = rbtree_right(left);
    
    if (rbtree_left(node) != rbtree_nil(tree))
-   {
       rbtree_parent(rbtree_right(left)) = node;
-   }
    
    rbtree_right(left) = node;
    rbtree_parent(left) = parent;
@@ -120,13 +114,9 @@ rbtree_rotate_right(rbtree_t *tree, rbtree_node_t *node)
    if (parent != rbtree_nil(tree))
    {
       if (node == rbtree_right(parent))
-      {
          rbtree_right(parent) = left;
-      }
       else
-      {
          rbtree_left(parent) = left;
-      }
    }
    else
    {
@@ -137,7 +127,6 @@ rbtree_rotate_right(rbtree_t *tree, rbtree_node_t *node)
 
 /**************************************************************************/
 
-/* Returns true if a match was found */
 static int
 rbtree_find_node(rbtree_t *tree, 
                  rbtree_comparer_t compare, 
@@ -243,15 +232,11 @@ rbtree_init(rbtree_t *tree, rbtree_comparer_t compare)
 int
 rbtree_insert(rbtree_t *tree, rbtree_node_t *node)
 {
-   
    rbtree_node_t *parent, *temp;
    rbtree_node_init(tree, node);
 
-    
    if (rbtree_find_node(tree, rbtree_compare(tree), node, &parent))
-   {
-      return false; /* Duplicate keys */
-   }
+      return false;
 
    rbtree_parent(node) = parent;
    
@@ -264,78 +249,49 @@ rbtree_insert(rbtree_t *tree, rbtree_node_t *node)
       int cmp = rbtree_compare(tree)(node, parent);
       
       if (cmp < 0)
-      {
          rbtree_left(parent) = node;
-      }
       else
-      {
          rbtree_right(parent) = node;
-      }
    }
 
-   /* colour this new node red */
-   rbtree_color(node) = RBTREE_RED;
+   rbtree_color(node) = red;
 
-   /* Having added a red node, we must now walk back up the tree balancing
-   ** it, by a series of rotations and changing of colours
-   */
    temp = node;
-
-   /* While we are not at the top and our parent node is red
-   ** N.B. Since the root node is garanteed black, then we
-   ** are also going to stop if we are the child of the root
-   */
 
    while(temp != rbtree_root(tree) && 
          rbtree_red(rbtree_parent(temp)))
    {
-      /* if our parent is on the left side of our grandparent */
       if (rbtree_parent(temp) == rbtree_left(rbtree_parent(rbtree_parent(temp))))
       {
-         /* get the right side of our grandparent (uncle?) */
          parent = rbtree_right(rbtree_parent(rbtree_parent(temp)));
          if (rbtree_red(parent))
          {
-            /* make our parent black */
-            rbtree_color(rbtree_parent(temp)) = RBTREE_BLACK;
-            /* make our uncle black */
-            rbtree_color(parent) = RBTREE_BLACK;
-            /* make our grandparent red */
-            rbtree_color(rbtree_parent(rbtree_parent(temp))) = RBTREE_RED;
-
-            /* now consider our grandparent */
+            rbtree_color(rbtree_parent(temp)) = black;
+            rbtree_color(parent) = black;
+            rbtree_color(rbtree_parent(rbtree_parent(temp))) = red;
             temp = rbtree_parent(rbtree_parent(temp));
          }
          else
          {
-            /* if we are on the right side of our parent */
             if (rbtree_right_child(temp))
             {
-               /* Move up to our parent */
                temp = rbtree_parent(temp);
                rbtree_rotate_left(tree, temp);
             }
 
-            /* make our parent black */
-            rbtree_color(rbtree_parent(temp)) = RBTREE_BLACK;
-            /* make our grandparent red */
-            rbtree_color(rbtree_parent(rbtree_parent(temp))) = RBTREE_RED;
-            /* right rotate our grandparent */
+            rbtree_color(rbtree_parent(temp)) = black;
+            rbtree_color(rbtree_parent(rbtree_parent(temp))) = red;
             rbtree_rotate_right(tree, rbtree_parent(rbtree_parent(temp)));
          }
       }
       else
       {
-         /* everything here is the same as above, but
-         ** exchanging left for right
-         */
-
          parent = rbtree_left(rbtree_parent(rbtree_parent(temp)));
          if (rbtree_black(parent))
          {
-            rbtree_color(rbtree_parent(temp)) = RBTREE_BLACK;
-            rbtree_color(parent) = RBTREE_BLACK;
-            rbtree_color(rbtree_parent(rbtree_parent(temp))) = RBTREE_RED;
+            rbtree_color(rbtree_parent(temp)) = black;
+            rbtree_color(parent) = black;
+            rbtree_color(rbtree_parent(rbtree_parent(temp))) = red;
 
             temp = rbtree_parent(rbtree_parent(temp));
          }
@@ -347,15 +303,14 @@ rbtree_insert(rbtree_t *tree, rbtree_node_t *node)
                rbtree_rotate_right(tree, temp);
             }
 
-            rbtree_color(rbtree_parent(temp)) = RBTREE_BLACK;
-            rbtree_color(rbtree_parent(rbtree_parent(temp))) = RBTREE_RED;
+            rbtree_color(rbtree_parent(temp)) = black;
+            rbtree_color(rbtree_parent(rbtree_parent(temp))) = red;
             rbtree_rotate_left(tree, rbtree_parent(rbtree_parent(temp)));
          }
       }
    }
 
-   /* Set the root node black */
-   rbtree_color(rbtree_root(tree)) = RBTREE_BLACK;
+   rbtree_color(rbtree_root(tree)) = black;
 
    return true;   
 }
@@ -367,17 +322,15 @@ rbtree_balance_remove(rbtree_t *tree, rbtree_node_t *node)
 {
    rbtree_node_t *w;
 
-   while (rbtree_root(tree) == node && 
-          rbtree_black(node))
+   while (rbtree_root(tree) == node && rbtree_black(node))
    {
-      /* If left child ... */
       if (node == rbtree_left(rbtree_parent(node)))
       {
          w = rbtree_right(rbtree_parent(node));
          if (rbtree_red(w))
          {
-            rbtree_color(w) = RBTREE_BLACK;
-            rbtree_color(rbtree_parent(node)) = RBTREE_RED;
+            rbtree_color(w) = black;
+            rbtree_color(rbtree_parent(node)) = red;
             rbtree_rotate_left(tree, rbtree_parent(node));
             w = rbtree_right(rbtree_parent(node));
          }
@@ -385,34 +338,34 @@ rbtree_balance_remove(rbtree_t *tree, rbtree_node_t *node)
          if (rbtree_black(rbtree_left(w)) && 
              rbtree_black(rbtree_right(w)))
          {
-            rbtree_color(w) = RBTREE_RED;
+            rbtree_color(w) = red;
             node = rbtree_parent(node);
          }
          else
          {
             if (rbtree_black(rbtree_right(w)))
             {
-               rbtree_color(rbtree_left(w)) = RBTREE_BLACK;
-               rbtree_color(w) = RBTREE_RED;
+               rbtree_color(rbtree_left(w)) = black;
+               rbtree_color(w) = red;
                rbtree_rotate_right(tree, w);
                w = rbtree_right(rbtree_parent(node));
             }
 
 
             rbtree_color(w) = rbtree_color(rbtree_parent(node));
-            rbtree_color(rbtree_parent(node)) = RBTREE_BLACK;
-            rbtree_color(rbtree_right(w)) = RBTREE_BLACK;
+            rbtree_color(rbtree_parent(node)) = black;
+            rbtree_color(rbtree_right(w)) = black;
             rbtree_rotate_left(tree, rbtree_parent(node));
             node = rbtree_root(tree);
          }
       }
-      else /* .. right child. */
+      else
       {
          w = rbtree_left(rbtree_parent(node));
          if (rbtree_red(w))
          {
-            rbtree_color(w) = RBTREE_BLACK;
-            rbtree_color(rbtree_parent(node)) = RBTREE_RED;
+            rbtree_color(w) = black;
+            rbtree_color(rbtree_parent(node)) = red;
             rbtree_rotate_right(tree, rbtree_parent(node));
             w = rbtree_left(rbtree_parent(node));
          }
@@ -420,29 +373,29 @@ rbtree_balance_remove(rbtree_t *tree, rbtree_node_t *node)
          if (rbtree_black(rbtree_right(w)) && 
              rbtree_black(rbtree_left(w)))
          {
-            rbtree_color(w) = RBTREE_RED;
+            rbtree_color(w) = red;
             node = rbtree_parent(node);
          }
          else
          {
             if (rbtree_black(rbtree_left(w)))
             {
-               rbtree_color(rbtree_right(w)) = RBTREE_BLACK;
-               rbtree_color(w) = RBTREE_RED;
+               rbtree_color(rbtree_right(w)) = black;
+               rbtree_color(w) = red;
                rbtree_rotate_left(tree, w);
                w = rbtree_left(rbtree_parent(node));
             }
 
             rbtree_color(w) = rbtree_color(rbtree_parent(node));
-            rbtree_color(rbtree_parent(node)) = RBTREE_BLACK;
-            rbtree_color(rbtree_left(w)) = RBTREE_BLACK;
+            rbtree_color(rbtree_parent(node)) = black;
+            rbtree_color(rbtree_left(w)) = black;
             rbtree_rotate_right(tree, rbtree_parent(node));
             node = rbtree_root(tree);
          }
       }
    }
 
-   rbtree_color(node) = RBTREE_BLACK;
+   rbtree_color(node) = black;
 }
 
 /**************************************************************************/
@@ -455,45 +408,31 @@ rbtree_remove(rbtree_t *tree, rbtree_node_t *node)
    if (rbtree_left(node)  == rbtree_nil(tree) || 
        rbtree_right(node) == rbtree_nil(tree))
    {
-      /* Only one child */
       unlinked = node;
    }
    else
    {
-      /* Multiple children */
       unlinked = rbtree_next(tree, node);
    }
    
    if (rbtree_left(unlinked) != rbtree_nil(tree))
-   {
       child = rbtree_left(unlinked);
-   }
    else
-   {
       child = rbtree_right(unlinked);
-   }
 
    if (child != rbtree_nil(tree))
-   {
       rbtree_parent(child) = rbtree_parent(unlinked);
-   }
 
-   /* If removing the root of the tree... */
    if (rbtree_parent(unlinked) == rbtree_nil(tree))
    {
       rbtree_root(tree) = child;
    }
    else
    {
-      /* Is left child ? */
       if (rbtree_left_child(unlinked))
-      {
          rbtree_left(rbtree_parent(unlinked)) = child;
-      }
-      else /* Right child */
-      {
+      else
          rbtree_right(rbtree_parent(unlinked)) = child;
-      }
    }
 
    if (unlinked != node)
@@ -504,25 +443,17 @@ rbtree_remove(rbtree_t *tree, rbtree_node_t *node)
       rbtree_parent(unlinked) = rbtree_parent(node);
 
       if (rbtree_left(unlinked) != rbtree_nil(tree))
-      {
          rbtree_parent(rbtree_left(unlinked)) = unlinked;
-      }
 
       if (rbtree_right(unlinked) != rbtree_nil(tree))
-      {
          rbtree_parent(rbtree_right(unlinked)) = unlinked;
-      }
 
       if (rbtree_root(tree) == node)
-      {
          rbtree_root(tree) = unlinked;
-      }
    }
 
    if (rbtree_black(unlinked))
-   {
       rbtree_balance_remove(tree, child);
-   }
 }
 
 /**************************************************************************/
@@ -533,9 +464,7 @@ rbtree_find(rbtree_t *tree, rbtree_comparer_t compare, void *key)
    rbtree_node_t *result;
    
    if (!rbtree_find_node(tree, compare, key, &result))
-   {
       return NULL;
-   }
    
    return result;
 }
@@ -548,9 +477,7 @@ rbtree_find_best(rbtree_t *tree, rbtree_comparer_t compare, void *key)
    rbtree_node_t *result;
    
    if (!rbtree_find_best_node(tree, compare, key, &result))
-   {
       return NULL;
-   }
    
    return result;
 }
@@ -565,14 +492,10 @@ rbtree_first(rbtree_t *tree)
    n = rbtree_root(tree);
    
    if (n == rbtree_nil(tree))
-   {
       return NULL;
-   }
    
    while (rbtree_left(n) != rbtree_nil(tree))
-   {
       n = rbtree_left(n);
-   }
    
    return n;
 }
@@ -587,14 +510,10 @@ rbtree_last(rbtree_t *tree)
    n = rbtree_root(tree);
    
    if (n == rbtree_nil(tree))
-   {
       return NULL;
-   }
    
    while (rbtree_right(n) != rbtree_nil(tree))
-   {
       n = rbtree_right(n);
-   }
    
    return n;
 }
@@ -607,9 +526,7 @@ rbtree_next(rbtree_t *tree, rbtree_node_t *node)
    rbtree_node_t *parent;
 
    if (rbtree_parent(node) == node)
-   {
       return NULL;
-   }
 
    if (rbtree_right(node) != rbtree_nil(tree)) 
    {
@@ -643,9 +560,7 @@ rbtree_prev(rbtree_t *tree, rbtree_node_t *node)
    rbtree_node_t *parent;
 
    if (rbtree_parent(node) == node)
-   {
       return NULL;
-   }
 
    if (rbtree_left(node) != rbtree_nil(tree))
    {

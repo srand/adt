@@ -119,9 +119,7 @@ hash_find(hash_t *hash, hash_key_t key)
         link = list_next(&hash->hash_table[key_index], link))
    {
       if (key == hash->hash_func(hash, link))
-      {
          return link;
-      }
    }
    
    return NULL;
