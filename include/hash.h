@@ -47,9 +47,7 @@ typedef list_t        hash_table_t;
 typedef list_link_t   hash_link_t;
 typedef unsigned long hash_key_t; 
 typedef struct hash   hash_t;
-
-typedef hash_key_t
-(*hash_func_t)(hash_t *hash, hash_link_t *element);
+typedef hash_key_t    (*hash_func_t)(hash_t *hash, hash_link_t *element);
 
 struct hash
 {

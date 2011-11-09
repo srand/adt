@@ -40,11 +40,6 @@ extern "C" {
 
 /**************************************************************************/
 
-#define RBTREE_BLACK  0ul
-#define RBTREE_RED    1ul
-
-/**************************************************************************/
-
 typedef unsigned long      rbtree_color_t;
 typedef struct rbtree      rbtree_t;
 typedef struct rbtree_node rbtree_node_t;
